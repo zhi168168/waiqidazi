@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { AppError } from "./providers.mjs";
+import { createSelfAuth } from "./self-auth.mjs";
 
 export function publicAuthConfig(env = process.env) {
   return {
@@ -9,6 +10,7 @@ export function publicAuthConfig(env = process.env) {
   };
 }
 export function createWebAuth({ client } = {}) {
+  if (!client && process.env.AUTH_PROVIDER === "better-auth") return createSelfAuth();
   const config = publicAuthConfig();
   config.configured = Boolean(
     client || (config.configured && process.env.SUPABASE_SERVICE_ROLE_KEY),

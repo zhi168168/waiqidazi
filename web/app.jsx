@@ -152,6 +152,10 @@ function AuthScreen({ go, mode = "login", onReady }) {
     [notice, setNotice] = useState(""),
     [privacy, setPrivacy] = useState(false),
     [configured, setConfigured] = useState(null),
+    [selfHosted, setSelfHosted] = useState(false),
+    [emailVerification, setEmailVerification] = useState(true),
+    [recoveryCode, setRecoveryCode] = useState(""),
+    [newRecoveryCode, setNewRecoveryCode] = useState(""),
     [recovery, setRecovery] = useState(false);
   useEffect(() => {
     let active = true;
@@ -161,6 +165,9 @@ function AuthScreen({ go, mode = "login", onReady }) {
         if (!active) return;
         setConfigured(Boolean(client));
         if (!client) return;
+        setSelfHosted(client.config?.provider === "better-auth");
+        setEmailVerification(client.config?.emailVerification !== false);
+        if (mode === "reset" && new URLSearchParams(location.search).get("token")) setRecovery(true);
         sub = client.auth.onAuthStateChange((event) => {
           if (event === "PASSWORD_RECOVERY" && active) setRecovery(true);
         }).data.subscription;
@@ -198,6 +205,13 @@ function AuthScreen({ go, mode = "login", onReady }) {
           options: { data: { nickname }, emailRedirectTo: callback },
         });
         if (result.error) throw result.error;
+        if (client.config?.provider === "better-auth" && result.data.session) {
+          await request("/auth/session", "POST", { consent: true });
+          setNewRecoveryCode(await client.issueRecoveryCode());
+          setNotice("账号已创建，请保存下方恢复码，再登录开始聊天。邮箱当前仅用于登录，尚未验证。恢复码仅显示一次。");
+          setStep("login");
+          return;
+        }
         if (result.data.session)
           throw Error("请先在 Supabase 开启邮箱验证，再开放注册。");
         setNotice("验证邮件已发送。请点击邮件中的链接，然后返回登录。");
@@ -211,6 +225,12 @@ function AuthScreen({ go, mode = "login", onReady }) {
         go("/");
       }
       if (step === "forgot") {
+        if (client.config?.provider === "better-auth") {
+          await client.recover(email, recoveryCode, password);
+          setRecoveryCode(""); setPassword(""); setStep("login");
+          setNotice("密码已重置，旧会话和恢复码已失效。登录后请在「我的」中生成新的恢复码。");
+          return;
+        }
         result = await client.auth.resetPasswordForEmail(email, {
           redirectTo: location.origin + "/reset-password",
         });
@@ -305,9 +325,9 @@ function AuthScreen({ go, mode = "login", onReady }) {
           <h2>{title}</h2>
           <p className="w-muted">
             {step === "signup"
-              ? "从一封验证邮件开始。"
+              ? emailVerification ? "从一封验证邮件开始。" : "设置账号密码，并保存账号恢复码。邮箱当前仅用作登录标识。"
               : step === "forgot"
-                ? "我们会发送一封密码重置邮件。"
+                ? selfHosted ? "使用注册时保存的恢复码重置密码。" : "我们会发送一封密码重置邮件。"
                 : step === "reset"
                   ? "为你的账号设置一个新的强密码。"
                   : "登录后，继续我们的对话。"}
@@ -325,6 +345,13 @@ function AuthScreen({ go, mode = "login", onReady }) {
           {notice && (
             <div className="w-notice" role="status">
               {notice}
+            </div>
+          )}
+          {newRecoveryCode && (
+            <div className="w-notice">
+              <strong>账号恢复码，请保存到安全的位置</strong>
+              <p style={{ overflowWrap: "anywhere", userSelect: "all" }}>{newRecoveryCode}</p>
+              <button type="button" className="w-text" onClick={() => navigator.clipboard.writeText(newRecoveryCode).then(() => setNotice("恢复码已复制，请妥善保管。"))}>复制恢复码</button>
             </div>
           )}
           {step === "signup" && (
@@ -354,7 +381,8 @@ function AuthScreen({ go, mode = "login", onReady }) {
               />
             </label>
           )}
-          {step !== "forgot" && (
+          {selfHosted && step === "forgot" && <label>账号恢复码<input required value={recoveryCode} onChange={e => setRecoveryCode(e.target.value)} minLength={48} maxLength={48} autoComplete="off" placeholder="注册时保存的 48 位恢复码" /></label>}
+          {(step !== "forgot" || selfHosted) && (
             <label>
               密码
               <input
@@ -403,8 +431,8 @@ function AuthScreen({ go, mode = "login", onReady }) {
             {
               {
                 login: "登录",
-                signup: "注册并验证邮箱",
-                forgot: "发送重置邮件",
+                signup: emailVerification ? "注册并验证邮箱" : "创建账号",
+                forgot: selfHosted ? "使用恢复码重置密码" : "发送重置邮件",
                 reset: "更新密码",
               }[step]
             }
@@ -424,7 +452,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
                 已有账号，去登录
               </button>
             )}
-            {step === "signup" && (
+          {step === "signup" && emailVerification && (
               <button type="button" disabled={busy || !email} onClick={resend}>
                 重新发送验证邮件
               </button>
@@ -1305,7 +1333,7 @@ function Library({ user, act, notify, needLogin, practice }) {
       const client = await getAuth();
       const { data } = await client.auth.getSession();
       const response = await fetch(entry.audioUrl, {
-        headers: { Authorization: `Bearer ${data.session.access_token}` },
+        headers: data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {},
       });
       if (!response.ok) throw Error("音频播放失败，请稍后重试。");
       const url = URL.createObjectURL(await response.blob());
@@ -1722,8 +1750,12 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
     [preferences, setPreferences] = useState(user.preferences || {}),
     [memory, setMemory] = useState(user.memoryEnabled),
     [password, setPassword] = useState(""),
+    [currentPassword, setCurrentPassword] = useState(""),
+    [selfHosted, setSelfHosted] = useState(false),
+    [recoveryCode, setRecoveryCode] = useState(""),
     [feedback, setFeedback] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => { getAuth().then(client => setSelfHosted(client?.config?.provider === "better-auth")); }, []);
   async function save(e) {
     e.preventDefault();
     setBusy(true);
@@ -1827,7 +1859,7 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
           setBusy(true);
           act(async () => {
             const client = await getAuth();
-            const { error } = await client.auth.updateUser({ password });
+            const { error } = await client.auth.updateUser({ password, currentPassword });
             if (error) throw error;
             setPassword("");
             notify("密码已更新，请重新登录");
@@ -1836,6 +1868,7 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
         }}
       >
         <h2>账号安全</h2>
+        {selfHosted && <label>当前密码<input type="password" autoComplete="current-password" required maxLength={128} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></label>}
         <label>
           新密码
           <input
@@ -1851,6 +1884,12 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
         </label>
         <Button disabled={busy}>更新密码</Button>
       </form>
+      {selfHosted && <section className="w-profile-section">
+        <h2>账号恢复码</h2>
+        <p className="w-muted">忘记密码时，可用邮箱和恢复码重置密码。生成新码后旧码立即失效，请保存到安全的位置。</p>
+        {recoveryCode && <p className="w-notice" style={{ overflowWrap: "anywhere", userSelect: "all" }}>{recoveryCode}</p>}
+        <button type="button" className="w-text" onClick={() => act(async () => { const client = await getAuth(); setRecoveryCode(await client.issueRecoveryCode()); })}>生成新的恢复码</button>
+      </section>}
       <form
         className="w-profile-section"
         onSubmit={(e) => {

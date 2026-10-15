@@ -843,6 +843,8 @@ export function createWebApp({
         String(
           process.env.VERCEL
             ? req.headers["x-vercel-forwarded-for"] || req.socket?.remoteAddress
+            : process.env.AUTH_PROVIDER === "better-auth"
+              ? req.headers["x-real-ip"] || req.socket?.remoteAddress
             : req.socket?.remoteAddress,
         ),
       );
@@ -885,7 +887,7 @@ export function createWebApp({
           old ||
           (await put("user", {
             id: account.id,
-            authProvider: "supabase",
+            authProvider: identity.config.provider || "supabase",
             email: account.email,
             nickname: String(account.user_metadata?.nickname || "").slice(
               0,
@@ -1421,7 +1423,7 @@ export function createWebApp({
               await del(kind, value.id);
           await put("user", {
             id: u.id,
-            authProvider: "supabase",
+            authProvider: identity.config.provider || "supabase",
             deletionPending: true,
             memoryEnabled: false,
             memoryEpoch: (u.memoryEpoch || 0) + 1,
@@ -1835,6 +1837,12 @@ export function createWebApp({
         /^\/api\/audio\//,
         "/audio/",
       );
+      if (identity.handler && path.startsWith("/api/accounts/")) {
+        await identity.handler(req, res);
+        return;
+      }
+      if (identity.handler && path.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method) && req.headers.origin !== new URL(process.env.BETTER_AUTH_URL).origin)
+        fail(403, "请求来源无效，请刷新页面后重试。");
       if (path === "/preview" || path === "/preview/") {
         res.writeHead(302, {
           Location: "/",
@@ -1878,7 +1886,7 @@ export function createWebApp({
             (await get("version", c.publishedVersion))?.audioId === key,
         );
         if (!visible) await admin(req);
-        else if (audioStorage.cloud) {
+        else {
           try {
             await admin(req);
           } catch (error) {
@@ -1949,6 +1957,9 @@ export function createWebApp({
           ".css": "text/css",
           ".svg": "image/svg+xml",
           ".png": "image/png",
+          ".webp": "image/webp",
+          ".ico": "image/x-icon",
+          ".webmanifest": "application/manifest+json",
         }[extname(file)] || "application/octet-stream",
       );
       res.end(readFileSync(file));
@@ -2009,6 +2020,7 @@ export function createWebApp({
       while (draining || controllers.size)
         await new Promise((r) => setTimeout(r, 10));
       await store.close();
+      await identity.close?.();
     },
   };
 }

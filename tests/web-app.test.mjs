@@ -5,7 +5,7 @@ import { id } from "../server/store.mjs";
 import { createWebApp } from "../server/web-app.mjs";
 import { AppError } from "../server/providers.mjs";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-test("private cloud audio authorizes both users and admins and redirects without proxying large files", async (t) => {
+for (const cloud of [true, false]) test(`private ${cloud ? "cloud" : "local"} audio authorizes users and admins`, async (t) => {
   const f = await webFixture(t);
   await f.login();
   const admin = (
@@ -42,11 +42,12 @@ test("private cloud audio authorizes both users and admins and redirects without
       },
     },
     audioStorage: {
-      cloud: true,
+      cloud,
       url: async (key) =>
         "https://storage.example.test/private/" + key + "?signed=short-lived",
       read: async () => {
-        throw Error("must not proxy audio bytes");
+        if (cloud) throw Error("must not proxy audio bytes");
+        return Buffer.from("RIFF-test-audio");
       },
     },
   });
@@ -65,10 +66,11 @@ test("private cloud audio authorizes both users and admins and redirects without
         headers: { Authorization: "Bearer " + token },
         redirect: "manual",
       });
-      assert.equal(response.status, 302);
-      assert.ok(
+      assert.equal(response.status, cloud ? 302 : 200);
+      if (cloud) assert.ok(
         response.headers.get("location").includes("signed=short-lived"),
       );
+      else assert.equal(await response.text(), "RIFF-test-audio");
     }
     f.store.put("corpus", {
       id: corpusId,

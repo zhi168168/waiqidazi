@@ -1,6 +1,7 @@
 import { createWebApp } from "./web-app.mjs";
 import { createWebStore } from "./web-store.mjs";
 const store = createWebStore();
+await store.initialize();
 const app = createWebApp({ store });
 const host = process.env.HOST || "127.0.0.1";
 app.server.listen(Number(process.env.PORT || 8838), host, () =>

@@ -10,6 +10,7 @@ data/
 miniprogram/project.private.config.json
 deploy/
 docs/web-qa/*.jpg
+docs/web-qa/*.png
 docs/qa/*.jpg
 docs/design/**/*.jpg
 docs/design/**/*preview.png

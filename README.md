@@ -2,6 +2,8 @@
 
 保留职场陪伴聊天、英语顺手学、完整回复英译、话题与记忆、语料库、收藏、朗读和原管理后台，新增邮箱账号体系及 Vercel 部署适配。
 
+当前线上采用**自建服务器方案**：Ubuntu、Node.js 24、Better Auth、PostgreSQL、本地私有音频、Nginx HTTPS。部署与维护见 [自建服务器部署](docs/自建服务器部署.md)。下方 Supabase/Vercel 配置作为可选方案保留。
+
 - 用户端：`/`
 - 内容与运营后台：`/admin`
 - 技术：React + Vite、Supabase Auth、PostgreSQL、Supabase 私有存储、Vercel Node.js Functions。

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { selfAuth } from "./self-auth";
 let loading;
 export function getAuth() {
   return (loading ||= fetch("/api/auth/config")
@@ -6,6 +7,7 @@ export function getAuth() {
       if (!response.ok) throw Error("账号服务暂不可用，请稍后重试。");
       const config = await response.json();
       if (!config.configured) return null;
+      if (config.provider === "better-auth") return selfAuth(config);
       return createClient(config.url, config.anonKey, {
         auth: {
           flowType: "pkce",
@@ -30,7 +32,7 @@ export async function request(path, method = "GET", body) {
     headers: {
       "Content-Type": "application/json",
       ...(data.session
-        ? { Authorization: `Bearer ${data.session.access_token}` }
+        && data.session.access_token ? { Authorization: `Bearer ${data.session.access_token}` }
         : {}),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),

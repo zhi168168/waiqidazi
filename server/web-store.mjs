@@ -57,7 +57,7 @@ export function createWebStore({
   const put = async (kind, value) => {
     await db
       .prepare(
-        "INSERT INTO entities VALUES(?,?,?::jsonb) ON CONFLICT(kind,id) DO UPDATE SET body=excluded.body",
+        "INSERT INTO entities VALUES(?,?,?::text::jsonb) ON CONFLICT(kind,id) DO UPDATE SET body=excluded.body",
       )
       .run(kind, value.id, JSON.stringify(value));
     return value;
@@ -79,6 +79,8 @@ export function createWebStore({
     await sql`CREATE SCHEMA IF NOT EXISTS buddy`;
     await sql`REVOKE ALL ON SCHEMA buddy FROM PUBLIC`;
     await sql`CREATE TABLE IF NOT EXISTS buddy.entities(kind text NOT NULL,id text NOT NULL,body jsonb NOT NULL,PRIMARY KEY(kind,id))`;
+    // Repair the earlier driver's double JSON encoding without changing object rows.
+    await sql`UPDATE buddy.entities SET body=(body #>> '{}')::jsonb WHERE jsonb_typeof(body)='string'`;
     await sql`CREATE TABLE IF NOT EXISTS buddy.sessions(token text PRIMARY KEY,subject text NOT NULL,type text NOT NULL,expires bigint NOT NULL)`;
     await sql`CREATE TABLE IF NOT EXISTS buddy.requests(user_id text NOT NULL,request_id text NOT NULL,message_id text NOT NULL,PRIMARY KEY(user_id,request_id))`;
     await sql`CREATE TABLE IF NOT EXISTS buddy.audio_keys(cache_key text PRIMARY KEY,audio_id text NOT NULL)`;
