@@ -46,8 +46,8 @@ test(
       anonymous = client();
     const suffix = randomBytes(6).toString("hex");
     const username = `qa_${suffix}`;
-    const password = randomBytes(20).toString("hex"),
-      nextPassword = randomBytes(20).toString("hex");
+    const password = randomBytes(4).toString("hex"),
+      nextPassword = randomBytes(4).toString("hex");
     const config = (await anonymous("/api/auth/config")).data;
     assert.equal(config.provider, "better-auth");
     assert.equal(config.usernameRegistration, true);
@@ -56,6 +56,7 @@ test(
     let aCreated = false,
       bCreated = false;
     try {
+      assert.equal((await anonymous("/api/accounts/sign-up/username", "POST", {username: `short_${suffix}`, password: "Abc1234", confirmPassword: "Abc1234"})).status, 400);
       const signup = await a("/api/accounts/sign-up/username", "POST", {
         username,
         password,

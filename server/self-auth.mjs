@@ -47,7 +47,7 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
     plugins: [username({ minUsernameLength: 3, maxUsernameLength: 32, usernameValidator: value => /^[a-zA-Z0-9_]+$/.test(value) })],
     emailAndPassword: {
       enabled: true,
-      minPasswordLength: 12,
+      minPasswordLength: 8,
       maxPasswordLength: 128,
       requireEmailVerification: false,
       revokeSessionsOnPasswordReset: true,
@@ -202,12 +202,12 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
           typeof body.code !== "string" ||
           !/^[a-f0-9]{48}$/.test(body.code) ||
           typeof body.password !== "string" ||
-          body.password.length < 12 ||
+          body.password.length < 8 ||
           body.password.length > 128
         )
           throw new AppError(
             400,
-            "请填写用户名、48 位恢复码和至少 12 位的新密码。",
+            "请填写用户名、48 位恢复码和至少 8 位的新密码。",
           );
         const connection = await pool.connect();
         try {

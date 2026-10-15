@@ -57,7 +57,7 @@ export function authError(error) {
   if (/already registered/i.test(text))
     return "该邮箱已注册，请登录或找回密码。";
   if (/password.*(short|least|weak)/i.test(text))
-    return "请使用至少 12 位的强密码。";
+    return "请使用至少 8 位的强密码。";
   if (/expired|invalid.*(token|code)|code.*invalid/i.test(text))
     return "链接已失效，请重新发送邮件。";
   if (/fetch|network/i.test(text)) return "网络连接失败，请稍后重试。";

@@ -394,7 +394,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
               <input
                 type="password"
                 required
-                minLength={step === "login" ? 1 : 12}
+                minLength={step === "login" ? 1 : 8}
                 maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -404,13 +404,13 @@ function AuthScreen({ go, mode = "login", onReady }) {
                 placeholder={
                   step === "login"
                     ? "输入你的密码"
-                    : "至少 12 位，建议混合字母、数字和符号"
+                    : "至少 8 位，建议混合字母、数字和符号"
                 }
               />
             </label>
           )}
           {step === "signup" && (
-            <label>确认密码<input type="password" required minLength={12} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" placeholder="再次输入密码" /></label>
+            <label>确认密码<input type="password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" placeholder="再次输入密码" /></label>
           )}
           {["login", "signup"].includes(step) && (
             <label className="w-consent">
@@ -1883,12 +1883,12 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
           <input
             type="password"
             autoComplete="new-password"
-            minLength={12}
+            minLength={8}
             maxLength={128}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="至少 12 位"
+            placeholder="至少 8 位"
           />
         </label>
         <Button disabled={busy}>更新密码</Button>
