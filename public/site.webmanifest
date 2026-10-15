@@ -1,0 +1,11 @@
+{
+  "name": "职场英语搭子",
+  "short_name": "职场搭子",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "theme_color": "#187c65",
+  "background_color": "#f4f7f6"
+}

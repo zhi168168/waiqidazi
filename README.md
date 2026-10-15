@@ -40,3 +40,7 @@ pnpm test
 ## 隔离浏览器验收
 
 `node scripts/preview-web-fixture.mjs` 仅启动独立临时数据库、模拟账号/邮件/模型接口，并提供标注为测试用途的语料和音频。它不读取原生产数据、不调用付费模型，也不进入 Vercel 生产入口。此验证不能替代真实 SMTP、Supabase 云项目及 Vercel 部署验收。
+
+## 网站品牌图标
+
+`icon.png` 为原始素材，网页仅引用 `public/brand/` 下经过裁切、等比缩放的衍生文件。替换原图后，使用安装了 Pillow 的 Python 执行 `python scripts/build-brand-assets.py`，再运行 `pnpm build`。生成 WebP LOGO（96/192）、PNG 图标（32/180/192/512）及包含 16/32/48 像素的 ICO。

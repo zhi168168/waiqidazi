@@ -140,9 +140,9 @@
 .w-brand img {
   width: 43px;
   height: 43px;
-  object-fit: cover;
-  border-radius: 50%;
-  background: #edf4ef;
+  object-fit: contain;
+  border-radius: 0;
+  background: transparent;
 }
 .w-brand small {
   font-size: 11px;

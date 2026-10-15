@@ -41,6 +41,7 @@ import remarkGfm from "remark-gfm";
 import { getAuth, request, authError } from "./auth";
 import "./style.css";
 import "./user.css";
+import BrandLogo from "./brand-logo";
 const Admin = lazy(() => import("./main"));
 const avatar = "/buddy-avatar-v2.png";
 const time = (value) =>
@@ -267,7 +268,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
             go("/");
           }}
         >
-          <img src={avatar} alt="" />
+          <BrandLogo />
           <span>职场英语搭子</span>
         </a>
         <div className="w-auth-copy">
@@ -455,7 +456,7 @@ function Callback({ go, onReady }) {
   return (
     <div className="user-app w-center">
       <section className="w-dialog">
-        <img className="w-round" src={avatar} alt="" />
+        <BrandLogo className="w-round" />
         <h1>邮箱验证</h1>
         <p>验证完成后，即可开始我们的对话。</p>
         {error && <p className="w-error">{error}</p>}
@@ -626,7 +627,7 @@ function App() {
             go("/");
           }}
         >
-          <img src={avatar} alt="" />
+          <BrandLogo />
           <span>
             职场英语搭子<small>工作里的事，跟我说说。</small>
           </span>
