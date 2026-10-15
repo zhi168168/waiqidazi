@@ -1,0 +1,17 @@
+<view class="page privacy-page">
+ <view class="title">开始前，了解这几件事</view>
+ <view class="privacy-summary">
+  <view>搭子回复和英语内容由 AI 生成，可能出现错误。</view>
+  <view>为延续对话，我们会保存聊天和记忆；必要内容会发送给 DeepSeek，并由微信进行内容安全检查。</view>
+  <view>请勿输入密码、商业机密或他人的敏感信息。</view>
+ </view>
+ <button class="policy-link" bindtap="togglePolicy">{{expanded ? '收起完整隐私政策' : '查看完整隐私政策'}}</button>
+ <view wx:if="{{loading}}" class="muted">加载中…</view>
+ <view wx:if="{{error}}" class="error">{{error}}</view>
+ <view wx:if="{{expanded}}" class="policy-text" selectable="{{true}}">{{text}}</view>
+ <view wx:if="{{consent}}" class="privacy-actions">
+  <checkbox-group bindchange="acceptChange"><label class="consent-label"><checkbox value="accepted" checked="{{accepted}}" color="#187c65"/>我已阅读并同意隐私政策</label></checkbox-group>
+  <button class="primary" disabled="{{!accepted}}" bindtap="agree">同意并继续</button>
+  <button class="decline" bindtap="decline">暂不同意</button>
+ </view>
+</view>

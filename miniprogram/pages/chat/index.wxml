@@ -1,0 +1,37 @@
+<view class="chat-page">
+ <view wx:if="{{error}}" class="error chat-error">{{error}}</view>
+ <scroll-view class="messages" scroll-y show-scrollbar="{{false}}" scroll-into-view="{{scrollInto}}" scroll-with-animation>
+  <view wx:if="{{!messages.length}}" class="intro">
+   <image class="intro-mark" src="/assets/icons/buddy-avatar-v2.png"/>
+   <view class="intro-title">说说，今天又发生了什么？</view>
+   <view class="subtitle">工作上的烦心事，或生活里的小开心，都可以聊。<view/>聊完，顺手带走一句英语。</view>
+   <view class="suggestion" hover-class="pressed" data-text="什么事情都交给我做，我好欺负吗？" bindtap="suggest"><text>什么事情都交给我做，我好欺负吗？</text><image class="chevron" src="/assets/icons/chevron.png"/></view>
+   <view class="suggestion" hover-class="pressed" data-text="明天要汇报了，我不知道怎么讲怎么办？" bindtap="suggest"><text>明天要汇报了，我不知道怎么讲怎么办？</text><image class="chevron" src="/assets/icons/chevron.png"/></view>
+  </view>
+  <view wx:for="{{messages}}" wx:key="id" class="turn">
+   <view class="user-wrap"><view class="user-message pre">{{item.text}}</view></view>
+   <view class="assistant-label"><image src="/assets/icons/buddy-avatar-v2.png"/><text>搭子</text><text class="ai-label">AI生成</text></view>
+   <view class="assistant-message">
+    <rich-text wx:if="{{item.status === 'complete'}}" class="assistant-content" nodes="{{item.replyNodes}}" user-select/>
+    <view wx:elif="{{item.status === 'generating' ? item.partial : false}}" class="pre">{{item.partial}}</view>
+    <view wx:elif="{{item.status === 'generating' || item.status === 'queued'}}" class="typing"><view class="typing-dot"/><view class="typing-dot"/><view class="typing-dot"/><text class="typing-label">正在组织表达…</text></view>
+    <view wx:else class="danger">{{item.error}}<text class="link" data-id="{{item.id}}" bindtap="retry">重试</text></view>
+    <view wx:if="{{item.status === 'queued' || item.status === 'generating'}}" class="link" data-id="{{item.id}}" bindtap="cancel">取消生成</view>
+    <view wx:if="{{item.status === 'complete'}}" class="reply-actions"><button class="language-button {{item.englishExpanded ? 'selected' : ''}}" aria-label="{{item.englishExpanded ? '收起英文版本' : '查看英文版本'}}" data-id="{{item.id}}" bindtap="toggleEnglish" disabled="{{item.englishLoading}}"><text class="language-icon">{{item.englishLoading ? '…' : 'EN'}}</text></button></view>
+    <view wx:if="{{item.englishExpanded}}" class="reply-english"><view class="english-version-label">英文版本</view><view wx:if="{{item.englishLoading}}" class="english-version-hint">正在翻译这条回复…</view><view wx:elif="{{item.englishError}}" class="danger english-version-hint">{{item.englishError}}<text class="link" data-id="{{item.id}}" bindtap="toggleEnglish"> 重试</text></view><rich-text wx:else class="assistant-content" nodes="{{item.englishNodes}}" user-select/></view>
+   </view>
+   <view wx:if="{{item.status === 'complete' && item.englishTip}}" class="english-tip">
+    <view class="tip-heading"><text class="tip-label">英语顺手学</text><text class="tip-copy link" data-id="{{item.id}}" bindtap="copyTip">复制</text></view>
+    <view class="tip-caption">你刚刚这句话，用英文可以这么说</view>
+    <view class="tip-expression" user-select>{{item.englishTip.expression}}</view>
+    <view class="tip-toggle" hover-class="pressed" data-id="{{item.id}}" bindtap="toggleTip"><text>{{item.tipExpanded ? '收起说明' : '为什么这样说'}}</text><image class="chevron" src="/assets/icons/{{item.tipExpanded ? 'down' : 'chevron'}}.png"/></view>
+    <view wx:if="{{item.tipExpanded}}" class="tip-explanation pre">{{item.englishTip.explanation}}</view>
+   </view>
+  </view>
+  <view id="bottom" style="height:24rpx"/>
+ </scroll-view>
+ <view class="composer">
+  <view class="composer-row"><textarea placeholder="聊聊今天的工作…" aria-label="聊天消息" value="{{text}}" bindinput="input" auto-height fixed maxlength="6000" confirm-type="send" bindconfirm="send" show-confirm-bar="{{false}}"/><button class="primary" aria-label="发送" disabled="{{pending || busy || !text}}" loading="{{busy}}" bindtap="send"><image wx:if="{{!busy}}" src="/assets/icons/{{pending || !text ? 'send-disabled' : 'send'}}.png"/></button></view>
+  <view class="composer-note">内容由 AI 生成，请结合实际判断</view>
+ </view>
+</view>

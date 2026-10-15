@@ -1,0 +1,20 @@
+<view class="page me-page">
+  <view class="profile-head" wx:if="{{me}}">
+    <view class="profile-avatar-wrap"><button class="profile-avatar" open-type="chooseAvatar" bindchooseavatar="chooseAvatar" disabled="{{saving}}" aria-label="选择头像">
+      <image wx:if="{{avatarUrl}}" class="user-avatar" src="{{avatarUrl}}" mode="aspectFill"/>
+      <image wx:else src="/assets/icons/me-active.png"/>
+    </button></view>
+    <view class="profile-info">
+      <input class="nickname" type="nickname" value="{{me.nickname}}" placeholder="填写昵称" placeholder-style="color:#8b9792;font-weight:400" aria-label="昵称" maxlength="32" bindblur="saveNickname" disabled="{{saving}}"/>
+      <view class="muted">{{saving ? '保存中…' : '点击头像或昵称修改'}}</view>
+    </view>
+  </view>
+  <block wx:else>
+    <view class="profile-head">
+      <view class="profile-avatar"><image src="/assets/icons/me-active.png"/></view>
+      <view><view class="title">未登录</view><view class="muted">登录后即可开始聊天</view></view>
+    </view>
+    <button class="primary" bindtap="login" loading="{{loggingIn}}" disabled="{{loggingIn}}">微信登录</button>
+  </block>
+  <button class="privacy-entry" bindtap="showPrivacy">隐私政策</button>
+</view>

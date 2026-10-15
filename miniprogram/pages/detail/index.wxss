@@ -1,0 +1,1 @@
+.expression{background:var(--accent-soft);padding:36rpx;border-radius:32rpx;font-size:21px;font-weight:500;line-height:1.65;margin:36rpx 0;color:var(--ink);letter-spacing:-.2px}.page>.panel{margin:24rpx 0}.page>.subtitle{margin-bottom:32rpx}

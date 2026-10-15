@@ -1,0 +1,9 @@
+data/
+deploy/
+miniprogram/
+.env
+.env.*
+*.log
+docs/web-qa/
+tests/
+scripts/preview-web-fixture.mjs

@@ -1,0 +1,7 @@
+.me-page{min-height:100%;padding-top:72rpx}.privacy-entry{background:transparent;color:var(--muted);font-size:26rpx;margin-top:48rpx}.privacy-entry::after{border:0}
+.profile-head{display:flex;align-items:center;gap:16px;padding:20px;background:var(--surface);border-radius:20px;margin:20rpx 0 40rpx}
+.profile-avatar-wrap{flex:0 0 56px;width:56px;height:56px;border-radius:50%;overflow:hidden}
+.profile-avatar,button.profile-avatar{display:flex;align-items:center;justify-content:center;flex:0 0 56px;width:56px;min-width:56px;max-width:56px;height:56px;min-height:56px;max-height:56px;margin:0;padding:0;background:var(--accent-soft);border-radius:50%;overflow:hidden;box-sizing:border-box}
+.profile-avatar::after{border:0;border-radius:50%}.profile-avatar image{width:24px;height:24px;flex-shrink:0}.profile-avatar image.user-avatar{width:100%;height:100%}
+.profile-info{flex:1;min-width:0}.profile-head .title{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:0}.profile-head .muted{font-size:12px;line-height:1.7}
+.profile-info .nickname{width:100%;height:30px;min-height:30px;border:0;background:transparent;padding:0;font-size:20px;line-height:1.5;font-weight:600;color:var(--ink);border-radius:0;margin:0 0 6px}.me-page>.primary{border-radius:28rpx}

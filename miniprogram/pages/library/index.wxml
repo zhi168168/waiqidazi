@@ -1,0 +1,14 @@
+<view class="page library-page">
+  <view class="library-heading"><view class="title">场景语料库</view><view class="subtitle">选一个场景，找到此刻用得上的好表达。</view></view>
+  <view class="scene-grid">
+    <button wx:for="{{roots}}" wx:key="id" class="scene-button {{item.tone}}" hover-class="scene-pressed" data-id="{{item.id}}" bindtap="scene" aria-label="{{item.name}}">
+      <view class="scene-icon"><image src="/assets/icons/scene-{{item.icon}}.png"/></view>
+      <view class="scene-name">{{item.name}}</view>
+      <view class="scene-description">{{item.description}}</view>
+      <view class="scene-action"><text>查看表达</text><image src="/assets/icons/chevron.png"/></view>
+    </button>
+  </view>
+  <view wx:if="{{loading}}" class="empty">正在加载场景…</view>
+  <view wx:elif="{{error}}" class="error">{{error}}<view class="link" bindtap="load">重新加载</view></view>
+  <view wx:elif="{{!roots.length}}" class="empty">暂无可用场景</view>
+</view>
