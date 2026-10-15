@@ -15,7 +15,7 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST = os.environ.get("WAIQI_SSH_HOST", "154.94.226.162")
-DOMAIN = os.environ.get("WAIQI_DOMAIN", "154-94-226-162.sslip.io")
+DOMAIN = os.environ.get("WAIQI_DOMAIN", "jobenglish.pro")
 client = paramiko.SSHClient()
 client.load_system_host_keys()
 client.load_host_keys(str(Path.home() / ".ssh" / "known_hosts"))
@@ -122,6 +122,7 @@ WantedBy=multi-user.target
  add_header X-Content-Type-Options nosniff always;
  add_header Referrer-Policy same-origin always;
  add_header X-Frame-Options DENY always;
+ location /.well-known/acme-challenge/ { root /var/www/waiqi-acme; }
  location / {
   proxy_pass http://127.0.0.1:8838;
   proxy_set_header Host $host;
@@ -135,7 +136,7 @@ WantedBy=multi-user.target
 """.replace("DOMAIN", DOMAIN).replace("SERVERIP", HOST)
     write("/etc/nginx/sites-available/waiqiEnglish", nginx, 0o644)
     run(f"set -eu; ln -sfn {shlex.quote(remote)} /opt/waiqiEnglish/current; systemctl daemon-reload; systemctl enable --now waiqiEnglish; systemctl restart waiqiEnglish; if test -e /etc/nginx/sites-enabled/default; then mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.disabled-waiqi; fi")
-    run("ln -sfn /etc/nginx/sites-available/waiqiEnglish /etc/nginx/sites-enabled/waiqiEnglish && nginx -t && systemctl reload nginx")
+    run("install -d -m 755 /var/www/waiqi-acme/.well-known/acme-challenge && ln -sfn /etc/nginx/sites-available/waiqiEnglish /etc/nginx/sites-enabled/waiqiEnglish && nginx -t && systemctl reload nginx")
     run(f"certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d {shlex.quote(DOMAIN)}", timeout=180)
     # Keep direct IP requests on the same canonical HTTPS origin used by authentication.
     write("/etc/nginx/conf.d/waiqi-ip.conf", f"server {{ listen 80; server_name {HOST}; return 302 https://{DOMAIN}$request_uri; }}\n", 0o644)
