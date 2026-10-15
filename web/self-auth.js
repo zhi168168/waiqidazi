@@ -35,19 +35,15 @@ export function selfAuth(config) {
           data: { subscription: { unsubscribe: () => listeners.delete(fn) } },
         };
       },
-      signUp: ({ email, password, options }) =>
+      signUp: ({ username, password, confirmPassword }) =>
         wrap(async () => {
-          await call("/sign-up/email", {
-            email,
-            password,
-            name: options?.data?.nickname || email.split("@")[0],
-            callbackURL: options?.emailRedirectTo,
-          });
+          await call("/sign-up/username", { username, password, confirmPassword });
           return session();
         }),
-      signInWithPassword: ({ email, password }) =>
+      signInWithPassword: ({ email, username, password }) =>
         wrap(async () => {
-          await call("/sign-in/email", { email, password });
+          const login = (username || email || "").trim();
+          await call(login.includes("@") ? "/sign-in/email" : "/sign-in/username", login.includes("@") ? {email: login, password} : {username: login, password});
           emit("SIGNED_IN");
           return session();
         }),
@@ -89,7 +85,7 @@ export function selfAuth(config) {
         }),
     },
     issueRecoveryCode: async () => (await call("/recovery-code", {})).code,
-    recover: (email, code, password) =>
-      call("/recover", { email, code: code.trim().toLowerCase(), password }),
+    recover: (username, code, password) =>
+      call("/recover", { username, code: code.trim().toLowerCase(), password }),
   };
 }

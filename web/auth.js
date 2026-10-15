@@ -47,7 +47,9 @@ export async function request(path, method = "GET", body) {
 }
 export function authError(error) {
   const text = error?.message || "";
-  if (/invalid login credentials/i.test(text)) return "邮箱或密码不正确。";
+  if (/invalid.*username|username.*password/i.test(text)) return "用户名或密码不正确。";
+  if (/username.*(taken|exists)/i.test(text)) return "该用户名已被使用，请换一个。";
+  if (/invalid login credentials/i.test(text)) return "账号或密码不正确。";
   if (/email not confirmed/i.test(text))
     return "请先点击邮件中的链接验证邮箱。";
   if (/rate|too many|after .*seconds/i.test(text))

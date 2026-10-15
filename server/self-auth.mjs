@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { username } from "better-auth/plugins";
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
 import { Pool } from "pg";
 import nodemailer from "nodemailer";
@@ -43,11 +44,12 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
     secret: env.BETTER_AUTH_SECRET,
     database: pool,
     trustedOrigins: [origin],
+    plugins: [username({ minUsernameLength: 3, maxUsernameLength: 32, usernameValidator: value => /^[a-zA-Z0-9_]+$/.test(value) })],
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 12,
       maxPasswordLength: 128,
-      requireEmailVerification: smtp,
+      requireEmailVerification: false,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url, token }) => {
         const recovery = resetContext.getStore();
@@ -59,7 +61,7 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
       },
     },
     emailVerification: {
-      sendOnSignUp: smtp,
+      sendOnSignUp: false,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) =>
         send(user.email, "验证邮箱", url),
@@ -74,6 +76,7 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
       max: 60,
       customRules: {
         "/sign-in/email": { window: 60, max: 8 },
+        "/sign-in/username": { window: 60, max: 8 },
         "/sign-up/email": { window: 600, max: 5 },
         "/request-password-reset": { window: 600, max: 4 },
       },
@@ -90,11 +93,10 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
   const verify = async (req) => {
     const data = await session(req);
     if (!data?.user) throw new AppError(401, "请先登录。");
-    if (smtp && !data.user.emailVerified)
-      throw new AppError(403, "请先验证邮箱。");
     return {
       id: data.user.id,
-      email: data.user.email,
+      email: data.user.username ? undefined : data.user.email,
+      username: data.user.username || data.user.email,
       user_metadata: { nickname: data.user.name },
       email_confirmed_at: data.user.emailVerified ? data.user.updatedAt : null,
     };
@@ -107,8 +109,9 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
     config: {
       provider: "better-auth",
       configured: true,
-      emailVerification: smtp,
-      emailRecovery: smtp,
+      emailVerification: false,
+      emailRecovery: false,
+      usernameRegistration: true,
       recoveryCode: true,
     },
     async initialize() {
@@ -132,6 +135,31 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
       const mutation = !["GET", "HEAD", "OPTIONS"].includes(req.method);
       if (mutation && req.headers.origin !== origin)
         throw new AppError(403, "请求来源无效，请刷新页面后重试。");
+      if (p === "/api/accounts/sign-up/username" && req.method === "POST") {
+        let raw = "";
+        for await (const chunk of req) {
+          raw += chunk;
+          if (Buffer.byteLength(raw) > 4096) throw new AppError(413, "请求过大。");
+        }
+        let body;
+        try { body = JSON.parse(raw); } catch { throw new AppError(400, "请求格式无效。"); }
+        const login = typeof body?.username === "string" ? body.username.trim() : "";
+        if (!/^[a-zA-Z0-9_]{3,32}$/.test(login)) throw new AppError(400, "用户名需为 3–32 位字母、数字或下划线。");
+        if (typeof body.password !== "string" || body.password !== body.confirmPassword) throw new AppError(400, "两次输入的密码不一致。");
+        // Better Auth requires an internal email field; it is never collected or used for mail.
+        const response = await instance.handler(new Request(origin + "/api/accounts/sign-up/email", {
+          method: "POST", headers: fromNodeHeaders(req.headers),
+          body: JSON.stringify({ username: login, name: login, password: body.password, email: randomBytes(24).toString("hex") + "@accounts.invalid" }),
+        }));
+        res.statusCode = response.status;
+        for (const [key, value] of response.headers) if (key !== "set-cookie") res.setHeader(key, value);
+        const cookies = response.headers.getSetCookie();
+        if (cookies.length) res.setHeader("Set-Cookie", cookies);
+        res.setHeader("Cache-Control", "no-store");
+        res.end(await response.text());
+        return;
+      }
+      if (p === "/api/accounts/sign-up/email") throw new AppError(400, "请使用用户名注册。");
       if (p === "/api/accounts/recovery-code" && req.method === "POST") {
         const user = await verify(req);
         const code = randomBytes(24).toString("hex");
@@ -169,8 +197,8 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
           throw new AppError(400, "请求格式无效。");
         }
         if (
-          typeof body.email !== "string" ||
-          body.email.length > 254 ||
+          typeof body.username !== "string" ||
+          body.username.length > 254 ||
           typeof body.code !== "string" ||
           !/^[a-f0-9]{48}$/.test(body.code) ||
           typeof body.password !== "string" ||
@@ -179,15 +207,15 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
         )
           throw new AppError(
             400,
-            "请填写邮箱、48 位恢复码和至少 12 位的新密码。",
+            "请填写用户名、48 位恢复码和至少 12 位的新密码。",
           );
         const connection = await pool.connect();
         try {
           await connection.query("BEGIN");
           const row = (
             await connection.query(
-              'SELECT r.user_id,r.code_hash FROM buddy.recovery_codes r JOIN "user" u ON u.id=r.user_id WHERE u.email=$1 FOR UPDATE OF r',
-              [body.email.toLowerCase().trim()],
+              'SELECT r.user_id,r.code_hash,u.email FROM buddy.recovery_codes r JOIN "user" u ON u.id=r.user_id WHERE u.username=$1 OR (u.username IS NULL AND u.email=$1) FOR UPDATE OF r',
+              [body.username.toLowerCase().trim()],
             )
           ).rows[0];
           if (
@@ -197,12 +225,12 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
               Buffer.from(digest(body.code)),
             )
           )
-            throw new AppError(400, "邮箱或恢复码不正确。");
+            throw new AppError(400, "用户名或恢复码不正确。");
           const capture = {};
           await resetContext.run(capture, async () => {
             await instance.api.requestPasswordReset({
               body: {
-                email: body.email.toLowerCase().trim(),
+                email: row.email,
                 redirectTo: origin + "/reset-password",
               },
             });
@@ -231,7 +259,6 @@ export function createSelfAuth({ pool: suppliedPool, env = process.env } = {}) {
         return;
       }
       if (
-        !smtp &&
         [
           "/api/accounts/request-password-reset",
           "/api/accounts/send-verification-email",

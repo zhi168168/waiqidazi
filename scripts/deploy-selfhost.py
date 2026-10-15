@@ -83,7 +83,7 @@ print('Database role and private environment prepared.')
     run("if test -x /usr/local/sbin/waiqi-backup; then /usr/local/sbin/waiqi-backup; fi")
     run(f"install -d -m 750 -o waiqi -g waiqi {shlex.quote(remote)} && tar -xzf /tmp/waiqi-release.tar.gz -C {shlex.quote(remote)} && chown -R waiqi:waiqi {shlex.quote(remote)} && cd {shlex.quote(remote)} && runuser -u waiqi -- pnpm install --frozen-lockfile && runuser -u waiqi -- pnpm build && runuser -u waiqi -- node --env-file=/etc/waiqiEnglish.env scripts/setup-web.mjs")
     privacy = """职场英语搭子隐私与 AI 使用说明
-本网站由站点运营者提供。你填写的邮箱目前仅用作账号登录标识，未通过邮件验证；不要填写他人邮箱。密码由 Better Auth 哈希保存，网站不会保存明文密码。忘记密码时使用你自行保管的一次性恢复码。
+本网站由站点运营者提供。注册只需用户名、密码和确认密码，不收集邮箱，不发送验证邮件。密码由 Better Auth 哈希保存，网站不会保存明文密码。忘记密码时使用你自行保管的一次性恢复码。
 我们在此服务器的 PostgreSQL 中保存账号资料、聊天记录、收藏、偏好、反馈及你授权提取的记忆，音频保存在服务器数据盘。对话内容和相关记忆会发送给 DeepSeek API 用于回复、英译、记忆提取和模型辅助内容检查；请求朗读的文本会发送给阿里云语音服务。AI 结果可能出错，不能替代专业意见。
 模型辅助内容检查不是人工审核，也不保证识别所有风险。请勿输入密码、支付凭证、身份证号或他人敏感资料。浏览器通过 HTTPS 连接服务器；会话使用 HttpOnly Cookie。
 你可以在「我的」关闭记忆，在「我的记忆」更正或删除记忆，删除对话，或注销账号。注销会删除业务记录和账号凭证；数据库备份仅用于故障恢复，最多保留14天，不用于继续提供个性化服务。

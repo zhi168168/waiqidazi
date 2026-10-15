@@ -145,6 +145,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
   const [step, setStep] = useState(mode),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
     [nickname, setNickname] = useState(""),
     [consent, setConsent] = useState(false),
     [busy, setBusy] = useState(false),
@@ -199,16 +200,19 @@ function AuthScreen({ go, mode = "login", onReady }) {
       const callback = location.origin + "/auth/callback";
       if (step === "signup") {
         if (!consent) throw Error("请先同意隐私与 AI 使用说明。");
+        if (password !== confirmPassword) throw Error("两次输入的密码不一致。");
         result = await client.auth.signUp({
           email,
+          username: email.trim(),
           password,
+          confirmPassword,
           options: { data: { nickname }, emailRedirectTo: callback },
         });
         if (result.error) throw result.error;
         if (client.config?.provider === "better-auth" && result.data.session) {
           await request("/auth/session", "POST", { consent: true });
           setNewRecoveryCode(await client.issueRecoveryCode());
-          setNotice("账号已创建，请保存下方恢复码，再登录开始聊天。邮箱当前仅用于登录，尚未验证。恢复码仅显示一次。");
+          setNotice("注册成功！请保存下方恢复码，忘记密码时可用它找回账号。恢复码仅显示一次。");
           setStep("login");
           return;
         }
@@ -218,7 +222,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
       }
       if (step === "login") {
         if (!consent) throw Error("请先同意隐私与 AI 使用说明。");
-        result = await client.auth.signInWithPassword({ email, password });
+        result = await client.auth.signInWithPassword({ email, username: email.trim(), password });
         if (result.error) throw result.error;
         await request("/auth/session", "POST", { consent: true });
         await onReady();
@@ -325,7 +329,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
           <h2>{title}</h2>
           <p className="w-muted">
             {step === "signup"
-              ? emailVerification ? "从一封验证邮件开始。" : "设置账号密码，并保存账号恢复码。邮箱当前仅用作登录标识。"
+              ? selfHosted ? "设置用户名和密码，开始和搭子聊天。" : "从一封验证邮件开始。"
               : step === "forgot"
                 ? selfHosted ? "使用注册时保存的恢复码重置密码。" : "我们会发送一封密码重置邮件。"
                 : step === "reset"
@@ -334,7 +338,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
           </p>
           {configured === false && (
             <div className="w-notice">
-              邮箱登录尚未开放，请联系管理员完成配置。
+              账号登录尚未开放，请联系管理员完成配置。
             </div>
           )}
           {error && (
@@ -354,7 +358,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
               <button type="button" className="w-text" onClick={() => navigator.clipboard.writeText(newRecoveryCode).then(() => setNotice("恢复码已复制，请妥善保管。"))}>复制恢复码</button>
             </div>
           )}
-          {step === "signup" && (
+          {step === "signup" && !selfHosted && (
             <label>
               昵称
               <input
@@ -369,15 +373,17 @@ function AuthScreen({ go, mode = "login", onReady }) {
           )}
           {step !== "reset" && (
             <label>
-              邮箱
+              {selfHosted ? "用户名" : "邮箱"}
               <input
-                type="email"
+                type={selfHosted ? "text" : "email"}
                 required
-                maxLength={254}
+                maxLength={selfHosted && step === "signup" ? 32 : 254}
+                minLength={selfHosted && step === "signup" ? 3 : undefined}
+                pattern={selfHosted && step === "signup" ? "[a-zA-Z0-9_]{3,32}" : undefined}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                placeholder="you@example.com"
+                autoComplete={selfHosted ? "username" : "email"}
+                placeholder={selfHosted ? step === "signup" ? "3–32 位字母、数字或下划线" : "输入你的用户名" : "you@example.com"}
               />
             </label>
           )}
@@ -402,6 +408,9 @@ function AuthScreen({ go, mode = "login", onReady }) {
                 }
               />
             </label>
+          )}
+          {step === "signup" && (
+            <label>确认密码<input type="password" required minLength={12} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" placeholder="再次输入密码" /></label>
           )}
           {["login", "signup"].includes(step) && (
             <label className="w-consent">
@@ -431,7 +440,7 @@ function AuthScreen({ go, mode = "login", onReady }) {
             {
               {
                 login: "登录",
-                signup: emailVerification ? "注册并验证邮箱" : "创建账号",
+                signup: selfHosted ? "注册" : "注册并验证邮箱",
                 forgot: selfHosted ? "使用恢复码重置密码" : "发送重置邮件",
                 reset: "更新密码",
               }[step]
@@ -695,14 +704,14 @@ function App() {
                 {user.avatar ? (
                   <img src={user.avatar} alt="" />
                 ) : (
-                  (user.nickname || user.email || "我")
+                  (user.nickname || user.username || user.email || "我")
                     .slice(0, 1)
                     .toUpperCase()
                 )}
               </span>
               <button onClick={() => go("/profile")}>
                 <strong>{user.nickname || "我的账号"}</strong>
-                <small>{user.email}</small>
+                <small>{user.username || user.email}</small>
               </button>
               <button className="w-icon" aria-label="退出登录" onClick={logout}>
                 <LogOut size={17} />
@@ -1820,8 +1829,8 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
           />
         </label>
         <label>
-          邮箱
-          <input value={user.email || ""} readOnly />
+          {user.authProvider === "better-auth" ? "用户名" : "邮箱"}
+          <input value={user.username || user.email || ""} readOnly />
         </label>
         {[
           ["job", "你的岗位"],
@@ -1886,7 +1895,7 @@ function Profile({ user, loadUser, act, notify, logout, onDeleted }) {
       </form>
       {selfHosted && <section className="w-profile-section">
         <h2>账号恢复码</h2>
-        <p className="w-muted">忘记密码时，可用邮箱和恢复码重置密码。生成新码后旧码立即失效，请保存到安全的位置。</p>
+        <p className="w-muted">忘记密码时，可用用户名和恢复码重置密码。生成新码后旧码立即失效，请保存到安全的位置。</p>
         {recoveryCode && <p className="w-notice" style={{ overflowWrap: "anywhere", userSelect: "all" }}>{recoveryCode}</p>}
         <button type="button" className="w-text" onClick={() => act(async () => { const client = await getAuth(); setRecoveryCode(await client.issueRecoveryCode()); })}>生成新的恢复码</button>
       </section>}

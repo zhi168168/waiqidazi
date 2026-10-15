@@ -889,6 +889,7 @@ export function createWebApp({
             id: account.id,
             authProvider: identity.config.provider || "supabase",
             email: account.email,
+            username: account.username,
             nickname: String(account.user_metadata?.nickname || "").slice(
               0,
               32,

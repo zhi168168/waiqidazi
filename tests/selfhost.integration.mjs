@@ -45,22 +45,29 @@ test(
       b = client(),
       anonymous = client();
     const suffix = randomBytes(6).toString("hex");
-    const email = `qa-${suffix}@example.test`;
+    const username = `qa_${suffix}`;
     const password = randomBytes(20).toString("hex"),
       nextPassword = randomBytes(20).toString("hex");
     const config = (await anonymous("/api/auth/config")).data;
     assert.equal(config.provider, "better-auth");
+    assert.equal(config.usernameRegistration, true);
+    assert.equal(config.emailVerification, false);
     assert.equal(JSON.stringify(config).includes("secret"), false);
     let aCreated = false,
       bCreated = false;
     try {
-      const signup = await a("/api/accounts/sign-up/email", "POST", {
-        email,
+      const signup = await a("/api/accounts/sign-up/username", "POST", {
+        username,
         password,
-        name: "部署验收甲",
+        confirmPassword: password,
       });
       assert.equal(signup.status, 200, JSON.stringify(signup.data));
       aCreated = true;
+      assert.equal(signup.data.user.username, username);
+      assert.equal((await anonymous("/api/accounts/sign-up/username", "POST", { username: username.toUpperCase(), password, confirmPassword: password })).status, 400);
+      assert.equal((await anonymous("/api/accounts/sign-up/username", "POST", { username: `wrong_${suffix}`, password, confirmPassword: "mismatch" })).status, 400);
+      assert.equal((await anonymous("/api/accounts/sign-up/username", "POST", { username: "bad name", password, confirmPassword: password })).status, 400);
+      assert.equal((await anonymous("/api/accounts/sign-up/email", "POST", {email: `old-${suffix}@example.test`, password, name: "old"})).status, 400);
       assert.match(signup.headers.get("set-cookie"), /HttpOnly/i);
       if (origin.startsWith("https:"))
         assert.match(signup.headers.get("set-cookie"), /Secure/i);
@@ -75,6 +82,7 @@ test(
       assert.equal(audio.status, 206);
       assert.match(audio.headers.get("content-type"), /audio\//);
     }
+      assert.equal((await a("/api/me")).data.username, username);
       const code = (await a("/api/accounts/recovery-code", "POST", {})).data
         .code;
       assert.match(code, /^[a-f0-9]{48}$/);
@@ -94,10 +102,10 @@ test(
           400,
         true,
       );
-      const signupB = await b("/api/accounts/sign-up/email", "POST", {
-        email: `qa-b-${suffix}@example.test`,
+      const signupB = await b("/api/accounts/sign-up/username", "POST", {
+        username: `qa_b_${suffix}`,
         password,
-        name: "部署验收乙",
+        confirmPassword: password,
       });
       assert.equal(signupB.status, 200);
       bCreated = true;
@@ -140,7 +148,7 @@ test(
       assert.equal(
         (
           await anonymous("/api/accounts/recover", "POST", {
-            email,
+            username,
             code: "0".repeat(48),
             password: nextPassword,
           })
@@ -150,7 +158,7 @@ test(
       assert.equal(
         (
           await anonymous("/api/accounts/recover", "POST", {
-            email,
+            username,
             code,
             password: nextPassword,
           })
@@ -161,7 +169,7 @@ test(
       assert.equal(
         (
           await anonymous("/api/accounts/recover", "POST", {
-            email,
+            username,
             code,
             password,
           })
@@ -169,14 +177,14 @@ test(
         400,
       );
       assert.equal(
-        (await a("/api/accounts/sign-in/email", "POST", { email, password }))
+        (await a("/api/accounts/sign-in/username", "POST", { username, password }))
           .status,
         401,
       );
       assert.equal(
         (
-          await a("/api/accounts/sign-in/email", "POST", {
-            email,
+          await a("/api/accounts/sign-in/username", "POST", {
+            username,
             password: nextPassword,
           })
         ).status,
